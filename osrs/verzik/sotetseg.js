@@ -120,9 +120,24 @@ function drawMoveTile(x, y) {
 	let pos_x = tile_size * x;
 	let pos_y = tile_size * y;
 	ctx.strokeStyle = color_circmove;
+	ctx.fillStyle = color_circfail;
 	ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
 	ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
 	ctx.stroke();
+	ctx.fill();
+}
+
+function clearMoveTile(x, y) {
+	drawMazeTile(x, y, color_tilenogo);
+	// let pos_x = tile_size * x;
+	// let pos_y = tile_size * y;
+	// ctx.strokeStyle = color_circmove;
+	// ctx.fillStyle = color_circfail;
+	// ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
+	// ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
+	// drawMazeTile(x, y, color_tilenogo);
+	// ctx.stroke();
+	// ctx.fill();
 }
 
 function drawTargetTile() {
@@ -161,6 +176,54 @@ function drawMazeTile(x, y, color_tile) {
 	ctx.lineWidth = tile_stroke*1.2;
 	ctx.strokeStyle = color_tile;
 	ctx.stroke();
+}
+
+function drawVerzik(){
+	if (ticks == 1) {
+		for (let x = 3; x < 6; x++) {
+			for (let y = 3; y < 6; y++) {
+				drawMazeTile(x, y, color_tilepath);
+			}
+		}
+	} else {
+		for (let x = 3; x < 6; x++) {
+			for (let y = 3; y < 6; y++) {
+				drawMazeTile(x, y, color_tilesolv);
+			}
+		}
+	}
+
+	if (ticks == 3) {
+		drawBomb(bomb_position.x, bomb_position.y);
+	}
+}
+
+function drawVerzikBounce(){
+	for (let x = 3; x < 6; x++) {
+		for (let y = 3; y < 6; y++) {
+			drawMazeTile(x, y, color_tilepath);
+		}
+	}
+}
+
+function drawBomb(x, y) {
+	let pos_x = tile_size * x;
+	let pos_y = tile_size * y;
+	ctx.strokeStyle = color_circmove;
+	ctx.fillStyle = color_circpass;
+	ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
+	ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
+	ctx.stroke();
+	ctx.fill();
+}
+
+
+function drawMap() {
+	for (let x = 0; x < 9; x++) {
+		for (let y = 0; y < 9; y++) {
+			drawMazeTile(x, y, color_tilenogo);
+		}
+	}
 }
 
 function drawMaze() {
@@ -464,21 +527,27 @@ function getPassedTiles(previous, target) {
 }
 
 canvas.addEventListener('mousedown', function (event) {
+	//drawVerzik();
+	// player_position = new Point(0, 0);
 	if (moves.length == 0 && !session_active) {
 		session_active = true;
-		player_position = new Point(start_pos.x, start_pos.y + 1); // start off-screen, 1 tile below first maze tile
-		timerTick = setInterval(gameTick, tick_length);
-	}
-	if (player_position.y <= 0 || (player_position.x == tornado_position.x && player_position.y == tornado_position.y)) {
-		return;
+	 	player_position = new Point(0, 0); // start off-screen, 1 tile below first maze tile
+	 	timerTick = setInterval(gameTick, tick_length);
 	}
 	let clickedTile = getTileClicked(event);
 	targeted_tile = new Point(clickedTile.x, clickedTile.y);
 	drawState();
+	// if (player_position.y <= 0 || (player_position.x == tornado_position.x && player_position.y == tornado_position.y)) {
+	// 	return;
+	// }
+	// let clickedTile = getTileClicked(event);
+	// targeted_tile = new Point(clickedTile.x, clickedTile.y);
+	// drawState();
 });
 
 function drawMoves() {
 	for (let i = 0; i < moves.length; i++) {
+		console.log('drawMoveTile');
 		drawMoveTile(moves[i].x, moves[i].y);
 	}
 }
@@ -487,18 +556,26 @@ function drawTornado() {
 	ctx.drawImage(imgTornado, tornado_position.x*tile_size+tile_size*0.1, tornado_position.y*tile_size+tile_size*0.1, tile_size*0.8, tile_size*0.8);
 }
 
+function updatePlayerPos() {
+	drawMoveTile(player_position.x, player_position.y);
+}
+
 function drawState() {
-	drawMaze();
-	drawstalledTiles();
-	drawPassedTiles();
-	drawMoves();
+	drawMap();
+	drawVerzik();
+	//clearMoveTile(player_position.x, player_position.y);
+	drawMoveTile(player_position.x, player_position.y);
+	// drawMaze();
+	// drawstalledTiles();
+	// drawPassedTiles();
+	//drawMoves();
 	if (!(player_position.x == targeted_tile.x && player_position.y == targeted_tile.y) && player_position.y != 0) {
 		drawTargetTile();
 	}
-	drawTornado();
-	if (player_position.y <= 0) {
-		drawEndGame();
-	}
+	// drawTornado();
+	// if (player_position.y <= 0) {
+	// 	drawEndGame();
+	// }
 }
 
 function showSolution() {
@@ -529,15 +606,14 @@ function writeTime() {
 }
 
 function gameTick() {
-	if (tornado_active || player_position.y <= maze_height - tornado_row) {
-		tornado_active = true;
-		tornado_position = path_coordinates.shift();
-	}
-	if ((player_position.x == targeted_tile.x && player_position.y == targeted_tile.y)) {
-		ticks_stalled += 1;
-		stalled_tiles.push(new Point(player_position.x, player_position.y));
-	}
-	ticks += 1;
+	// if (tornado_active || player_position.y <= maze_height - tornado_row) {
+	// 	tornado_active = true;
+	// 	tornado_position = path_coordinates.shift();
+	// }
+	// if ((player_position.x == targeted_tile.x && player_position.y == targeted_tile.y)) {
+	// 	ticks_stalled += 1;
+	// 	stalled_tiles.push(new Point(player_position.x, player_position.y));
+	// }
 	let new_tiles = getPassedTiles(player_position, targeted_tile);
 	for (let i = 0; i < new_tiles.length; i++) {
 		path_taken.push(new_tiles[i]);
@@ -545,13 +621,19 @@ function gameTick() {
 	if (new_tiles.length > 0) {
 		moves.push(new_tiles[new_tiles.length - 1]);
 	}
+	if (ticks == 4) {
+		bomb_position = new Point(player_position.x, player_position.y);
+		ticks = 1;
+	} else {
+		ticks += 1;
+	}
 	player_position = new Point(path_taken[path_taken.length - 1].x, path_taken[path_taken.length - 1].y);
 	drawState();
-	if (player_position.y <= 0 || (player_position.x == tornado_position.x && player_position.y == tornado_position.y)) {
-		session_active = false;
-		clearInterval(timerTick);
-	}
-	writeTime();
+	// if (player_position.y <= 0 || (player_position.x == tornado_position.x && player_position.y == tornado_position.y)) {
+	// 	session_active = false;
+	// 	clearInterval(timerTick);
+	// }
+	//writeTime();
 	
 	// Testing time between ticks (on my PC varies from 590-610 ms, which is actually better than OSRS servers)
 	// if (time_a) {
@@ -599,13 +681,15 @@ function resetvars() {
 }
 
 function newSession() {
+	drawMap();
+	drawVerzik();
 	resetvars();
-	maze = makeMaze();
-	pathWeighting();
-	solveMaze();
-	drawMaze(maze);
-	writePar();
-	writeTime();
+	//maze = makeMaze();
+	//pathWeighting();
+	//solveMaze();
+	//drawMaze(maze);
+	//writePar();
+	//writeTime();
 }
 
 function reset() {
@@ -636,6 +720,7 @@ var moves;
 var optimal_tickpos;
 var optimal_halftickpos;
 var player_position;
+var bomb_position;
 var targeted_tile;
 var path_taken;
 
