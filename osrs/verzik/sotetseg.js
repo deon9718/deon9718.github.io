@@ -19,8 +19,8 @@ function showInstructions() {
 
 const tick_length  = 600;
 
-const maze_width   = 9;
-const maze_height  = 9;
+const maze_width   = 11;
+const maze_height  = 11;
 const max_x_change = 5;
 const path_turns   = 8;
 const tornado_row  = 4;
@@ -34,6 +34,7 @@ var tile_stroke  = tile_size/25;
 var solv_fontsize  = 15*(tile_size/40);
 var offset_optimal = solv_fontsize/2;
 var offset_user    = -offset_optimal;
+var yeetPos = [4, 5, 6];
 
 const color_mazeback = "#323232";
 const color_tilepath = "#961919";
@@ -47,6 +48,7 @@ const color_lineplay = "#6495ED";
 const color_circmove = "#FFFFFF";
 const color_circpass = "#008000";
 const color_circfail = "#DC143C";
+const color_circstun = "#FFFF00";
 const solv_font      = "Arial";
 
 var canvas = document.getElementById("sotetseg-maze");
@@ -120,7 +122,11 @@ function drawMoveTile(x, y) {
 	let pos_x = tile_size * x;
 	let pos_y = tile_size * y;
 	ctx.strokeStyle = color_circmove;
-	ctx.fillStyle = color_circfail;
+	if (stunned == 0) {
+		ctx.fillStyle = color_circfail;
+	} else {
+		ctx.fillStyle = color_circstun;
+	}
 	ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
 	ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
 	ctx.stroke();
@@ -180,21 +186,24 @@ function drawMazeTile(x, y, color_tile) {
 
 function drawVerzik(){
 	if (ticks == 1) {
-		for (let x = 3; x < 6; x++) {
-			for (let y = 3; y < 6; y++) {
+		for (let x = 4; x < 7; x++) {
+			for (let y = 4; y < 7; y++) {
 				drawMazeTile(x, y, color_tilepath);
 			}
 		}
 	} else {
-		for (let x = 3; x < 6; x++) {
-			for (let y = 3; y < 6; y++) {
+		for (let x = 4; x < 7; x++) {
+			for (let y = 4; y < 7; y++) {
 				drawMazeTile(x, y, color_tilesolv);
 			}
 		}
 	}
 
-	if (ticks == 3) {
+	if (ticks == 3 && stunned < 6) {
 		drawBomb(bomb_position.x, bomb_position.y);
+	}
+	if (ticks == 4) {
+		yeet();
 	}
 }
 
@@ -207,20 +216,60 @@ function drawVerzikBounce(){
 }
 
 function drawBomb(x, y) {
-	let pos_x = tile_size * x;
-	let pos_y = tile_size * y;
-	ctx.strokeStyle = color_circmove;
-	ctx.fillStyle = color_circpass;
-	ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
-	ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
-	ctx.stroke();
-	ctx.fill();
+	if (player_position.x == x && player_position.y == y) {
+		let pos_x = tile_size * x;
+		let pos_y = tile_size * y;
+		ctx.fillStyle = color_circpass;
+		ctx.fillRect(pos_x, pos_y, tile_size, tile_size);
+		ctx.fillStyle = color_circpass;
+		ctx.fillRect(
+			pos_x + tile_stroke,
+			pos_y + tile_stroke,
+			tile_size - tile_stroke * 2,
+			tile_size - tile_stroke * 2
+		);
+		ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
+		ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
+		ctx.lineWidth = tile_stroke*1.2;
+		ctx.strokeStyle = color_circpass;
+		ctx.stroke();
+	} else {
+		let pos_x = tile_size * x;
+		let pos_y = tile_size * y;
+		ctx.strokeStyle = color_circmove;
+		ctx.fillStyle = color_circpass;
+		ctx.beginPath(pos_x, pos_y, pos_x+tile_size, pos_y+tile_size);
+		ctx.arc(pos_x+tile_size/2, pos_y+tile_size/2, tile_size/3.4, 0, 2*Math.PI);
+		ctx.stroke();
+		ctx.fill();
+	}
+}
+
+function yeet() {
+	if (player_position.x == 3 && yeetPos.includes(player_position.y)) {
+		player_position.x = 0;
+		stunned = 8;
+	}
+	if (player_position.x == 7 && yeetPos.includes(player_position.y)) {
+		player_position.x = 10;
+		stunned = 8;
+	}
+	if (player_position.y == 3 && yeetPos.includes(player_position.x)) {
+		player_position.y = 0;
+		stunned = 8;
+	}
+	if (player_position.y == 7 && yeetPos.includes(player_position.x)) {
+		player_position.y = 10;
+		stunned = 8;
+	}
+
+
 }
 
 
 function drawMap() {
-	for (let x = 0; x < 9; x++) {
-		for (let y = 0; y < 9; y++) {
+	for (let x = 0; x < 11; x++) {
+		for (let y = 0; y < 11; y++) {
 			drawMazeTile(x, y, color_tilenogo);
 		}
 	}
@@ -529,13 +578,14 @@ function getPassedTiles(previous, target) {
 canvas.addEventListener('mousedown', function (event) {
 	//drawVerzik();
 	// player_position = new Point(0, 0);
+	let clickedTile = getTileClicked(event);
 	if (moves.length == 0 && !session_active) {
 		session_active = true;
-	 	player_position = new Point(0, 0); // start off-screen, 1 tile below first maze tile
+	 	player_position = new Point(clickedTile.x, clickedTile.y); // start off-screen, 1 tile below first maze tile
 	 	timerTick = setInterval(gameTick, tick_length);
 	}
-	let clickedTile = getTileClicked(event);
 	targeted_tile = new Point(clickedTile.x, clickedTile.y);
+	//targeted_tile = new Point(clickedTile.x, clickedTile.y);
 	drawState();
 	// if (player_position.y <= 0 || (player_position.x == tornado_position.x && player_position.y == tornado_position.y)) {
 	// 	return;
@@ -569,7 +619,7 @@ function drawState() {
 	// drawstalledTiles();
 	// drawPassedTiles();
 	//drawMoves();
-	if (!(player_position.x == targeted_tile.x && player_position.y == targeted_tile.y) && player_position.y != 0) {
+	if (!(player_position.x == targeted_tile.x && player_position.y == targeted_tile.y) && stunned == 0) {
 		drawTargetTile();
 	}
 	// drawTornado();
@@ -627,7 +677,12 @@ function gameTick() {
 	} else {
 		ticks += 1;
 	}
-	player_position = new Point(path_taken[path_taken.length - 1].x, path_taken[path_taken.length - 1].y);
+	console.log(stunned);
+	if (stunned == 0) {
+		player_position = new Point(path_taken[path_taken.length - 1].x, path_taken[path_taken.length - 1].y);
+	} else {
+		stunned -= 1;
+	}
 	drawState();
 	// if (player_position.y <= 0 || (player_position.x == tornado_position.x && player_position.y == tornado_position.y)) {
 	// 	session_active = false;
@@ -665,6 +720,8 @@ function runStats(amount) {
 }
 
 function resetvars() {
+	stunned = 0;
+	bomb_position = new Point();
 	tornado_active = false;
 	team_damaged = false;
 	ticks = 0;
@@ -721,6 +778,7 @@ var optimal_tickpos;
 var optimal_halftickpos;
 var player_position;
 var bomb_position;
+var stunned;
 var targeted_tile;
 var path_taken;
 
